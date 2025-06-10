@@ -60,9 +60,23 @@ class ReviewGateContext:
             except Exception as e:
                 logger.error(f"❌ Failed to load Whisper: {e}")
 
+        self._status_task = asyncio.create_task(self._periodic_status_update())
+
+    async def _periodic_status_update(self):
+        """Periodically update MCP status log for extension monitoring"""
+        while True:
+            try:
+                await asyncio.sleep(10)
+                await _update_mcp_status_log()
+            except Exception as e:
+                logger.warning(f"⚠️ Periodic status update failed: {e}")
+                await asyncio.sleep(30)
+
     async def cleanup(self):
         """Cleanup resources on shutdown"""
         logger.info("🧹 Cleaning up resources...")
+        if hasattr(self, "_status_task"):
+            self._status_task.cancel()
 
 
 @asynccontextmanager
@@ -416,8 +430,6 @@ async def _handle_speech_to_text(audio_file_path: str) -> str:
     try:
         logger.info(f"🎤 Transcribing: {audio_file_path}")
 
-        # Run the blocking transcribe call in a separate thread to avoid
-        # blocking the asyncio event loop.
         segments, info = await asyncio.to_thread(
             context.lifespan_context.whisper_model.transcribe, audio_file_path
         )
@@ -472,8 +484,7 @@ async def _create_trigger_file(data: dict[str, Any]) -> bool:
 
         trigger_data = {
             "timestamp": datetime.now().isoformat(),
-            "system": "review-gate-v3",
-            "editor": "mcp_client",
+            "system": "review-gate-v2",
             "data": data,
             "pid": os.getpid(),
             "mcp_integration": True,
@@ -482,12 +493,36 @@ async def _create_trigger_file(data: dict[str, Any]) -> bool:
         trigger_file.write_text(json.dumps(trigger_data, indent=2))
         logger.info(f"🎯 Trigger file created: {trigger_file}")
 
+        await _update_mcp_status_log()
+
+        file_created = trigger_file.exists()
+        if file_created:
+            logger.info(f"✅ Trigger file verified: {trigger_file}")
+        else:
+            logger.error(f"❌ Trigger file not found after creation: {trigger_file}")
+
         await asyncio.sleep(0.1)
-        return trigger_file.exists()
+        return file_created
 
     except Exception as e:
         logger.error(f"❌ Failed to create trigger file: {e}")
         return False
+
+
+async def _update_mcp_status_log():
+    """Update MCP status log file that extension monitors"""
+    try:
+        status_log = Path("/tmp/review_gate_v2.log")
+        timestamp = datetime.now().isoformat()
+        log_entry = f"[{timestamp}] MCP Server Active - Review Gate v3.0.0\n"
+
+        with open(status_log, "a") as f:
+            f.write(log_entry)
+
+        logger.debug(f"📝 MCP status log updated: {status_log}")
+
+    except Exception as e:
+        logger.warning(f"⚠️ Could not update MCP status log: {e}")
 
 
 async def _wait_for_user_input(trigger_id: str, timeout: int) -> str | None:
