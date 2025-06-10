@@ -6,7 +6,7 @@ A modern Model Context Protocol (MCP) server for AI-powered code review and inte
 
 - **🔄 Interactive Review Chat**: Get real-time feedback from users through popup dialogs
 - **⚡ Quick Input**: Fast user input collection with customizable timeouts
-- **🎤 Speech-to-Text**: Convert audio to text using Whisper (optional)
+- **🎤 Speech-to-Text**: Convert audio to text using Whisper (disabled by default, requires configuration)
 - **🎯 MCP Client Integration**: Seamless integration with any MCP-compatible client
 
 ## 🚀 Installation

@@ -14,6 +14,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import sys
 import time
 from typing import Any
 
@@ -24,10 +25,22 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-try:
-    from faster_whisper import WhisperModel
+# Check for audio enablement via environment variable or command line
+AUDIO_ENABLED = (
+    os.getenv("REVIEW_GATE_AUDIO", "false").lower() == "true" or "--audio" in sys.argv
+)
 
-    WHISPER_AVAILABLE = True
+try:
+    if AUDIO_ENABLED:
+        from faster_whisper import WhisperModel
+
+        WHISPER_AVAILABLE = True
+        logger.info("🎤 Audio enabled - Whisper available")
+    else:
+        WHISPER_AVAILABLE = False
+        logger.info(
+            "🔇 Audio disabled by default - use --audio flag or REVIEW_GATE_AUDIO=true to enable"
+        )
 except ImportError:
     WHISPER_AVAILABLE = False
     logger.info("🎤 Whisper not available - speech-to-text disabled")
@@ -514,7 +527,7 @@ async def _update_mcp_status_log():
     try:
         status_log = Path("/tmp/review_gate_v2.log")
         timestamp = datetime.now().isoformat()
-        log_entry = f"[{timestamp}] MCP Server Active - Review Gate v3.0.0\n"
+        log_entry = f"[{timestamp}] MCP Server Active - Review Gate\n"
 
         with open(status_log, "a") as f:
             f.write(log_entry)
@@ -564,7 +577,7 @@ async def _wait_for_user_input(trigger_id: str, timeout: int) -> str | None:
 
 def main():
     """Main entry point for the MCP server"""
-    logger.info("🚀 Starting Review Gate MCP Server v3.0.0")
+    logger.info("🚀 Starting Review Gate MCP Server")
     mcp.run()
 
 
