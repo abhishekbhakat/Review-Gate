@@ -222,7 +222,7 @@ Should I:
 
 
 @mcp.tool()
-def review_gate_chat(
+async def review_gate_chat(
     message: str = "Please provide your review or feedback:",
     title: str = "Review Gate - ゲート",
     context: str = "",
@@ -272,9 +272,7 @@ def review_gate_chat(
     Returns:
         User's response or timeout message
     """
-    return asyncio.run(
-        _handle_review_gate_chat(message, title, context, urgent, timeout)
-    )
+    return await _handle_review_gate_chat(message, title, context, urgent, timeout)
 
 
 async def _handle_review_gate_chat(
@@ -313,7 +311,7 @@ async def _handle_review_gate_chat(
 
 
 @mcp.tool()
-def quick_input(prompt: str = "Quick input needed:", timeout: int = 90) -> str:
+async def quick_input(prompt: str = "Quick input needed:", timeout: int = 90) -> str:
     """
     ⚡ QUICK INPUT TOOL - For Fast User Clarifications
 
@@ -342,7 +340,7 @@ def quick_input(prompt: str = "Quick input needed:", timeout: int = 90) -> str:
     Returns:
         User's quick response
     """
-    return asyncio.run(_handle_quick_input(prompt, timeout))
+    return await _handle_quick_input(prompt, timeout)
 
 
 async def _handle_quick_input(prompt: str, timeout: int) -> str:
@@ -375,7 +373,7 @@ async def _handle_quick_input(prompt: str, timeout: int) -> str:
 if WHISPER_AVAILABLE:
 
     @mcp.tool()
-    def speech_to_text(audio_file_path: str) -> str:
+    async def speech_to_text(audio_file_path: str) -> str:
         """
         🎤 SPEECH-TO-TEXT CONVERSION - Voice Input Support
 
@@ -402,7 +400,7 @@ if WHISPER_AVAILABLE:
         Returns:
             Transcribed text or error message
         """
-        return asyncio.run(_handle_speech_to_text(audio_file_path))
+        return await _handle_speech_to_text(audio_file_path)
 
 
 async def _handle_speech_to_text(audio_file_path: str) -> str:
@@ -417,9 +415,13 @@ async def _handle_speech_to_text(audio_file_path: str) -> str:
 
     try:
         logger.info(f"🎤 Transcribing: {audio_file_path}")
-        segments, info = context.lifespan_context.whisper_model.transcribe(
-            audio_file_path
+
+        # Run the blocking transcribe call in a separate thread to avoid
+        # blocking the asyncio event loop.
+        segments, info = await asyncio.to_thread(
+            context.lifespan_context.whisper_model.transcribe, audio_file_path
         )
+
         transcription = " ".join(segment.text for segment in segments).strip()
 
         logger.info(f"✅ Transcription complete: {transcription[:100]}...")
