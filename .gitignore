@@ -340,7 +340,7 @@ dist/
 *.tar.gz
 *.rar
 *.7z
-*.claude 
+*.claude
 *CLAUDE.md
 *.cursor
 # Compiled files
@@ -374,7 +374,7 @@ cache/
 tmp/
 
 # Lock files
-*.lock
+# *.lock
 package-lock.json
 yarn.lock
 
